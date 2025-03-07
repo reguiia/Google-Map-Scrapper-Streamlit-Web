@@ -46,7 +46,7 @@ The scraped data is then saved in an Excel file for easy access and download.
 
 1. **Run the Streamlit App**
     ```sh
-    streamlit run main.py
+    streamlit run main_setVal.py
     ```
 
 2. **Open the App in a Browser**
