@@ -17,6 +17,8 @@ import time
 import datetime
 import logging
 from dataclasses import dataclass, asdict, field
+import streamlit.components.v1 as components
+
 
 # asyncio.set_event_loop_policy(asyncio.WindowsProactorEventLoopPolicy())
 
@@ -298,20 +300,40 @@ async def main():
                 excel_file_path = business_list.save_to_excel(excel_filename)
 
                 if excel_file_path:
+                    st.success("Scraping completed! Your Excel file will download automatically...")
+                
+                    # Read the Excel file
+                    with open(excel_file_path, "rb") as f:
+                        excel_data = f.read()
+                
+                    # Encode to base64
+                    import base64
+                    b64 = base64.b64encode(excel_data).decode()
+                
+                    # Create download link
+                    href = f"""
+                        <html>
+                        <head>
+                        <script>
+                        function autoDownload() {{
+                            var link = document.createElement('a');
+                            link.href = 'data:application/octet-stream;base64,{b64}';
+                            link.download = '{excel_filename}.xlsx';
+                            document.body.appendChild(link);
+                            link.click();
+                            document.body.removeChild(link);
+                        }}
+                        window.onload = autoDownload;
+                        </script>
+                        </head>
+                        <body>
+                        <p>Your file should download automatically. If not, <a href="data:application/octet-stream;base64,{b64}" download="{excel_filename}.xlsx">click here</a>.</p>
+                        </body>
+                        </html>
+                    """
+                
+                    st.components.v1.html(href, height=100)
 
-                    st.success("Fetched completed!")
-
-                    download_container = st.container()
-
-                    with download_container:
-                        st.markdown(
-                            ""
-                        )  # Add some space above the button for better separation
-                        st.download_button(label="Download Excel File",
-                                           data=open(excel_file_path,
-                                                     'rb').read(),
-                                           file_name=f"{excel_filename}.xlsx",
-                                           mime="application/octet-stream")
 
                 else:
                     st.warning(
