@@ -18,6 +18,7 @@ import datetime
 import logging
 from dataclasses import dataclass, asdict, field
 import streamlit.components.v1 as components
+import re
 
 
 # asyncio.set_event_loop_policy(asyncio.WindowsProactorEventLoopPolicy())
@@ -61,6 +62,7 @@ class Business:
     address: str = None
     website: str = None
     phone_number: str = None
+    email: str = None
     # reviews_count: int = None
     reviews_average: float = None
 
@@ -68,13 +70,13 @@ class Business:
         if not isinstance(other, Business):
             return NotImplemented
         return (self.name, self.address, self.website, self.phone_number,
-                self.reviews_average) == \
+                self.email, self.reviews_average) == \
                (other.name, other.address, other.website, other.phone_number,
-                 other.reviews_average)
+                 other.email, other.reviews_average)
 
     def __hash__(self):
         return hash((self.name, self.address, self.website, self.phone_number,
-                     self.reviews_average))
+                     self.email, self.reviews_average))
 
 
 @dataclass
@@ -115,6 +117,24 @@ class BusinessList:
     def get_row_size(self):
         """Returns the number of rows in the DataFrame"""
         return len(self.business_list)
+
+
+async def scrape_emails_from_website(browser, url):
+    """Scrapes emails from a given website URL using an existing browser instance"""
+    try:
+        page = await browser.new_page()
+        await page.goto(url, timeout=60000)
+        content = await page.content()
+        await page.close()
+
+        # Use regex to find email addresses
+        emails = re.findall(r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b', content)
+        if emails:
+            return emails[0]  # Return the first email found
+        return None
+    except Exception as e:
+        logging.error(f"Error scraping emails from {url}: {e}")
+        return None
 
 
 async def scrape_business(search_term, total):
@@ -205,10 +225,13 @@ async def scrape_business(search_term, total):
                         if website_elements:
                             business.website = await website_elements[
                                 0].inner_text()
+                            business.email = await scrape_emails_from_website(browser, f"https://{business.website}")
                         else:
                             business.website = ""
+                            business.email = ""
                     else:
                         business.website = ""
+                        business.email = ""
 
                     if await page.locator(phone_number_xpath).count() > 0:
                         phone_elements = await page.locator(phone_number_xpath
